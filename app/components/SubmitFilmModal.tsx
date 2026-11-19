@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient, supabaseConfigured } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/AuthProvider';
-import { X, Sparkles, Crown, Shield, Zap, Upload, Loader2, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { X, Sparkles, Crown, Shield, Zap, Loader2, AlertTriangle } from 'lucide-react';
 
 const PROJECT_APEX_GENRES = [
   'Cyber Rap',
@@ -17,6 +17,9 @@ const PROJECT_APEX_GENRES = [
   'Synthwave',
   'AI Movies', // Restricted to Paid Tiers ($25 / $75)
   'Short Films',
+  'AI TV Shows',
+  'Episodic Series',
+  'Animated Episodes',
 ] as const;
 
 interface SubmitFilmModalProps {
@@ -35,7 +38,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
   const [genre, setGenre] = useState<string>(PROJECT_APEX_GENRES[0]);
   const [contentRating, setContentRating] = useState('General');
   const [description, setDescription] = useState('');
-  
+
   // File upload states
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
@@ -67,7 +70,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
       // 1. Refresh & verify session token and active user
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
-      
+
       const activeUser = session?.user || user;
       if (!activeUser) {
         setErrorMessage('Session expired or unauthorized. Please sign out and sign back in.');
@@ -85,7 +88,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
       if (mediaFile) {
         const fileExt = mediaFile.name.split('.').pop();
         const fileName = `media-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('apex-media')
           .upload(fileName, mediaFile);
@@ -103,7 +106,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
       if (artworkFile) {
         const artExt = artworkFile.name.split('.').pop();
         const artName = `art-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${artExt}`;
-        
+
         const { error: artUploadError } = await supabase.storage
           .from('apex-media')
           .upload(artName, artworkFile);
@@ -154,11 +157,11 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ 
-            filmId: String(filmId), 
+          body: JSON.stringify({
+            filmId: String(filmId),
             tier: selectedTier,
             userId: activeUser.id,
-            email: activeUser.email
+            email: activeUser.email,
           }),
         });
 
@@ -188,7 +191,6 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        
         <button
           onClick={onClose}
           className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
@@ -341,7 +343,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
           <div className="space-y-2 pt-1">
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">SELECT TIER</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div 
+              <div
                 onClick={() => setSelectedTier('free')}
                 className={`border rounded-2xl p-4 cursor-pointer transition-all space-y-2 ${selectedTier === 'free' ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30' : 'border-slate-800 bg-slate-950'}`}
               >
@@ -353,7 +355,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
                 <p className="text-[10px] text-slate-400">Audio tracks, shorts & community ballots.</p>
               </div>
 
-              <div 
+              <div
                 onClick={() => setSelectedTier('featured')}
                 className={`border rounded-2xl p-4 cursor-pointer transition-all space-y-2 ${selectedTier === 'featured' ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30' : 'border-slate-800 bg-slate-950'}`}
               >
@@ -365,7 +367,7 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
                 <p className="text-[10px] text-slate-400">Top homepage spotlight pinning & AI movies.</p>
               </div>
 
-              <div 
+              <div
                 onClick={() => setSelectedTier('pro')}
                 className={`border rounded-2xl p-4 cursor-pointer transition-all space-y-2 ${selectedTier === 'pro' ? 'border-cyan-500 bg-cyan-500/10 ring-2 ring-cyan-500/30' : 'border-slate-800 bg-slate-950'}`}
               >
@@ -397,7 +399,6 @@ export default function SubmitFilmModal({ isOpen, onClose }: SubmitFilmModalProp
             )}
           </button>
         </form>
-
       </div>
     </div>
   );

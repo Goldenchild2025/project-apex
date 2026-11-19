@@ -1,155 +1,205 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trophy, Sparkles, CheckCircle2, Flame, Award } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Flame, Award } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AuthModal from '../AuthModal';
 import SubmitFilmModal from '../components/SubmitFilmModal';
-import { supabase, supabaseConfigured } from '@/lib/supabaseClient';
+import { createClient, supabaseConfigured } from '@/lib/supabaseClient';
 
 interface AwardNominee {
   id: string;
   category: string;
   name: string;
   subtitle: string;
+  baseVotes: number;
   votes: number;
 }
 
 const INITIAL_NOMINEES: AwardNominee[] = [
-  { id: 'artist-jax', category: 'artist', name: 'Jax Cypher', subtitle: 'Undefeated 601 Trap / Anthem Series', votes: 3420 },
-  { id: 'artist-byte', category: 'artist', name: 'ByteRider', subtitle: 'Cyberpunk Synthwave & Glitch Sagas', votes: 1285 },
-  { id: 'video-jax', category: 'video', name: '601 Cypher (Episode 2: Capital Siege)', subtitle: 'Sora 4K Cinematic 808 Battle', votes: 2150 },
-  { id: 'video-byte', category: 'video', name: 'Cyberpunk Anthem X', subtitle: 'Suno v3.5 Neural Beats', votes: 980 },
+  { id: 'artist-jax', category: 'artist', name: 'Jax Cypher', subtitle: 'Undefeated 601 Trap / Anthem Series', baseVotes: 3420, votes: 3420 },
+  { id: 'artist-byte', category: 'artist', name: 'ByteRider', subtitle: 'Cyberpunk Synthwave & Glitch Sagas', baseVotes: 1285, votes: 1285 },
+  { id: 'video-jax', category: 'video', name: '601 Cypher (Episode 2: Capital Siege)', subtitle: 'Sora 4K Cinematic 808 Battle', baseVotes: 2150, votes: 2150 },
+  { id: 'video-byte', category: 'video', name: 'Cyberpunk Anthem X', subtitle: 'Suno v3.5 Neural Beats', baseVotes: 980, votes: 980 },
 ];
 
 export default function AwardsPage() {
   const [nominees, setNominees] = useState<AwardNominee[]>(INITIAL_NOMINEES);
-  const [votedCategories, setVotedCategories] = useState<{ [key: string]: string }>({});
+  const [votedCategories, setVotedCategories] = useState<Record<string, string>>({});
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [submittingCategory, setSubmittingCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(supabaseConfigured);
 
-  useEffect(() => {
-    // Load local voting status
-    const savedVotes = localStorage.getItem('apex_award_votes');
-    if (savedVotes) {
-      try {
-        setVotedCategories(JSON.parse(savedVotes));
-      } catch (err) {
-        console.error('Error parsing saved votes:', err);
-      }
-    }
-
-    let active = true;
-    if (supabaseConfigured) {
-      const fetchVotes = async () => {
-        const { data, error } = await supabase
-          .from('awards_votes')
-          .select('*');
-
-        if (!active) return;
-        if (!error && data) {
-          // Tally votes from database if records exist
-          const tally: Record<string, number> = {};
-          data.forEach((row: any) => {
-            if (row.nominee_id) {
-              tally[row.nominee_id] = (tally[row.nominee_id] || 0) + 1;
-            }
-          });
-
-          setNominees((prev) =>
-            prev.map((n) => ({
-              ...n,
-              votes: n.votes + (tally[n.id] || 0),
-            }))
-          );
-        }
-        setLoading(false);
-      };
-
-      void fetchVotes();
-
-      // Realtime channel for awards votes sync
-      const channel = supabase
-        .channel('public:awards_votes')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'awards_votes' },
-          (payload: any) => {
-            const newVote = payload.new;
-            if (newVote && newVote.nominee_id) {
-              setNominees((prev) =>
-                prev.map((n) =>
-                  n.id === newVote.nominee_id ? { ...n, votes: n.votes + 1 } : n
-                )
-              );
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        active = false;
-        void supabase.removeChannel(channel);
-      };
-    } else {
+  const loadVotesAndUser = useCallback(async () => {
+    if (!supabaseConfigured) {
       setLoading(false);
-    }
-  }, []);
-
-  async function handleVote(category: string, nomineeId: string) {
-    if (votedCategories[category]) {
-      alert(`You have already cast your official vote for the ${category === 'artist' ? 'Virtual Artist of the Year' : 'Best AI Music Video'} category!`);
       return;
     }
 
-    // Update local state
-    const updatedNominees = nominees.map((n) => 
-      n.id === nomineeId ? { ...n, votes: n.votes + 1 } : n
-    );
-    setNominees(updatedNominees);
+    const supabase = createClient();
 
-    const newVotedState = { ...votedCategories, [category]: nomineeId };
-    setVotedCategories(newVotedState);
-    localStorage.setItem('apex_award_votes', JSON.stringify(newVotedState));
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const activeUserId = user?.id ?? null;
+    setCurrentUserId(activeUserId);
 
-    // Sync with Supabase if configured
-    if (supabaseConfigured) {
-      try {
-        await supabase.from('awards_votes').insert([
-          { category, nominee_id: nomineeId, created_at: new Date().toISOString() }
-        ]);
-      } catch (err) {
-        console.error('Error recording award vote to Supabase:', err);
+    const { data, error } = await supabase
+      .from('award_votes')
+      .select('user_id, category_id, nominee_id');
+
+    if (!error && data) {
+      const tally: Record<string, number> = {};
+      const userVotes: Record<string, string> = {};
+
+      for (const row of data as Array<{
+        user_id: string;
+        category_id: string;
+        nominee_id: string;
+      }>) {
+        if (row.nominee_id) {
+          tally[row.nominee_id] = (tally[row.nominee_id] || 0) + 1;
+        }
+        if (activeUserId && row.user_id === activeUserId && row.category_id && row.nominee_id) {
+          userVotes[row.category_id] = row.nominee_id;
+        }
       }
+
+      setNominees(
+        INITIAL_NOMINEES.map((n) => ({
+          ...n,
+          votes: n.baseVotes + (tally[n.id] || 0),
+        }))
+      );
+      setVotedCategories(userVotes);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const init = async () => {
+      if (!active) return;
+      await loadVotesAndUser();
+    };
+
+    void init();
+
+    if (!supabaseConfigured) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const supabase = createClient();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setCurrentUserId(session?.user?.id ?? null);
+      void loadVotesAndUser();
+    });
+
+    const channel = supabase
+      .channel('public:award_votes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'award_votes' },
+        () => {
+          if (active) {
+            void loadVotesAndUser();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+      void supabase.removeChannel(channel);
+    };
+  }, [loadVotesAndUser]);
+
+  async function handleVote(categoryId: string, nomineeId: string) {
+    if (votedCategories[categoryId]) {
+      alert(
+        `You have already cast your official vote for the ${
+          categoryId === 'artist' ? 'Virtual Artist of the Year' : 'Best AI Music Video'
+        } category!`
+      );
+      return;
+    }
+
+    if (!supabaseConfigured) {
+      return;
+    }
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const activeUserId = user?.id ?? currentUserId;
+    if (!activeUserId) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    setSubmittingCategory(categoryId);
+
+    try {
+      const { error } = await supabase
+        .from('award_votes')
+        .insert({
+          user_id: activeUserId,
+          category_id: categoryId,
+          nominee_id: nomineeId,
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          await loadVotesAndUser();
+          alert('Your vote for this category is already recorded.');
+          return;
+        }
+        console.error('Error recording award vote to Supabase:', error);
+        alert('Could not record your vote right now. Please try again.');
+        return;
+      }
+
+      setVotedCategories((prev) => ({ ...prev, [categoryId]: nomineeId }));
+      await loadVotesAndUser();
+    } finally {
+      setSubmittingCategory(null);
     }
   }
 
-  const artistNominees = nominees.filter(n => n.category === 'artist');
-  const videoNominees = nominees.filter(n => n.category === 'video');
+  const artistNominees = nominees.filter((n) => n.category === 'artist');
+  const videoNominees = nominees.filter((n) => n.category === 'video');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
       <Navbar onOpenSubmit={() => setIsSubmitOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
-        
-        {/* Header - Fixed spacing and text layout */}
         <div className="space-y-4">
           <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-bold hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Explore
           </Link>
-          
+
           <div className="flex flex-col items-start gap-3">
             <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-4 py-1.5 rounded-full text-xs font-black text-amber-400 uppercase tracking-widest">
               <Award className="w-4 h-4 text-amber-400" /> OFFICIAL COMMUNITY BALLOT
             </div>
-            
+
             <h1 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight">
               MONTHLY APEX AWARDS
             </h1>
-            
+
             <p className="text-xs sm:text-sm text-slate-400 max-w-xl leading-relaxed">
               Cast your official community votes for the top virtual artists, music videos, and AI cinematic drops of the season.
             </p>
@@ -162,7 +212,6 @@ export default function AwardsPage() {
           </div>
         ) : (
           <div className="space-y-10">
-            
             {/* Category 1: Virtual Artist of the Year */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
               <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
@@ -183,8 +232,9 @@ export default function AwardsPage() {
                 {artistNominees.map((nominee) => {
                   const hasVotedThisCat = votedCategories['artist'] === nominee.id;
                   const isLocked = Boolean(votedCategories['artist']);
+                  const isSubmitting = submittingCategory === 'artist';
                   return (
-                    <div 
+                    <div
                       key={nominee.id}
                       className={`bg-slate-950 border rounded-2xl p-6 space-y-4 flex flex-col justify-between transition-all ${
                         hasVotedThisCat ? 'border-amber-500 ring-2 ring-amber-500/40 bg-amber-500/5' : 'border-slate-800'
@@ -204,17 +254,17 @@ export default function AwardsPage() {
                         </span>
                         <button
                           onClick={() => handleVote('artist', nominee.id)}
-                          disabled={isLocked}
+                          disabled={isLocked || isSubmitting}
                           className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             hasVotedThisCat
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : isLocked
+                              : isLocked || isSubmitting
                               ? 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
                               : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20'
                           }`}
                         >
                           {hasVotedThisCat ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : null}
-                          {hasVotedThisCat ? 'Voted ✓' : 'Click to Vote'}
+                          {isSubmitting ? 'Saving...' : hasVotedThisCat ? 'Voted ✓' : 'Click to Vote'}
                         </button>
                       </div>
                     </div>
@@ -243,8 +293,9 @@ export default function AwardsPage() {
                 {videoNominees.map((nominee) => {
                   const hasVotedThisCat = votedCategories['video'] === nominee.id;
                   const isLocked = Boolean(votedCategories['video']);
+                  const isSubmitting = submittingCategory === 'video';
                   return (
-                    <div 
+                    <div
                       key={nominee.id}
                       className={`bg-slate-950 border rounded-2xl p-6 space-y-4 flex flex-col justify-between transition-all ${
                         hasVotedThisCat ? 'border-cyan-500 ring-2 ring-cyan-500/40 bg-cyan-500/5' : 'border-slate-800'
@@ -264,17 +315,17 @@ export default function AwardsPage() {
                         </span>
                         <button
                           onClick={() => handleVote('video', nominee.id)}
-                          disabled={isLocked}
+                          disabled={isLocked || isSubmitting}
                           className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             hasVotedThisCat
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : isLocked
+                              : isLocked || isSubmitting
                               ? 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
                               : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md shadow-cyan-500/20'
                           }`}
                         >
                           {hasVotedThisCat ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : null}
-                          {hasVotedThisCat ? 'Voted ✓' : 'Click to Vote'}
+                          {isSubmitting ? 'Saving...' : hasVotedThisCat ? 'Voted ✓' : 'Click to Vote'}
                         </button>
                       </div>
                     </div>
@@ -282,10 +333,8 @@ export default function AwardsPage() {
                 })}
               </div>
             </div>
-
           </div>
         )}
-
       </main>
 
       <SubmitFilmModal isOpen={isSubmitOpen} onClose={() => setIsSubmitOpen(false)} />

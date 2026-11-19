@@ -3,7 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Film, Trophy, Crown, Sparkles, LayoutDashboard, Upload, LogOut, LogIn, Menu, X, UserCheck } from 'lucide-react';
+import {
+  Film,
+  Trophy,
+  Crown,
+  Sparkles,
+  LayoutDashboard,
+  Upload,
+  LogOut,
+  LogIn,
+  Menu,
+  X,
+} from 'lucide-react';
 import { supabase, supabaseConfigured } from '@/lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
@@ -58,9 +69,8 @@ export default function Navbar({ onOpenSubmit, onOpenAuth }: NavbarProps) {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-2xl shadow-black/50">
+    <header className="fixed top-9 left-0 right-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-2xl shadow-black/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/25 group-hover:scale-105 transition-transform">
@@ -73,38 +83,38 @@ export default function Navbar({ onOpenSubmit, onOpenAuth }: NavbarProps) {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6 text-[11px] font-bold uppercase tracking-wider text-slate-300">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className={`transition-all py-1 px-2 rounded-lg ${isActive('/') ? 'text-amber-400 bg-amber-500/10 font-black' : 'hover:text-amber-400'}`}
           >
             Explore
           </Link>
-          <Link 
-            href="/battles" 
+          <Link
+            href="/battles"
             className={`transition-all py-1 px-2 rounded-lg flex items-center gap-1.5 ${isActive('/battles') ? 'text-amber-400 bg-amber-500/10 font-black' : 'hover:text-amber-400'}`}
           >
             <Trophy className="w-3.5 h-3.5 text-amber-400" /> Battle Arena
           </Link>
-          <Link 
-            href="/leaderboard" 
+          <Link
+            href="/leaderboard"
             className={`transition-all py-1 px-2 rounded-lg flex items-center gap-1.5 ${isActive('/leaderboard') ? 'text-amber-400 bg-amber-500/10 font-black' : 'hover:text-amber-400'}`}
           >
             <Crown className="w-3.5 h-3.5 text-amber-400" /> Leaderboard
           </Link>
-          <Link 
-            href="/awards" 
+          <Link
+            href="/awards"
             className={`transition-all py-1 px-2 rounded-lg flex items-center gap-1.5 ${isActive('/awards') ? 'text-amber-400 bg-amber-500/10 font-black' : 'hover:text-amber-400'}`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Awards
           </Link>
-          <Link 
-            href="/dashboard" 
+          <Link
+            href="/dashboard"
             className={`transition-all py-1 px-2 rounded-lg flex items-center gap-1.5 ${isActive('/dashboard') ? 'text-amber-400 bg-amber-500/10 font-black' : 'hover:text-amber-400'}`}
           >
             <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" /> Dashboard
           </Link>
 
-          <button 
+          <button
             onClick={handleUploadClick}
             className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer font-black shadow-sm"
           >
@@ -152,36 +162,36 @@ export default function Navbar({ onOpenSubmit, onOpenAuth }: NavbarProps) {
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-slate-950/95 backdrop-blur-2xl border-b border-slate-800 px-6 py-5 space-y-3 shadow-2xl">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-xs font-black uppercase tracking-wider text-slate-200 hover:text-amber-400 py-1.5"
           >
             Explore
           </Link>
-          <Link 
-            href="/battles" 
+          <Link
+            href="/battles"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-xs font-black uppercase tracking-wider text-slate-200 hover:text-amber-400 py-1.5"
           >
             Battle Arena
           </Link>
-          <Link 
-            href="/leaderboard" 
+          <Link
+            href="/leaderboard"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-xs font-black uppercase tracking-wider text-slate-200 hover:text-amber-400 py-1.5"
           >
             Leaderboard
           </Link>
-          <Link 
-            href="/awards" 
+          <Link
+            href="/awards"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-xs font-black uppercase tracking-wider text-slate-200 hover:text-amber-400 py-1.5"
           >
             Awards
           </Link>
-          <Link 
-            href="/dashboard" 
+          <Link
+            href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-xs font-black uppercase tracking-wider text-slate-200 hover:text-amber-400 py-1.5"
           >

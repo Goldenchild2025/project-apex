@@ -2,11 +2,18 @@
 
 export const PROJECT_APEX_GENRES = [
   'Cyber Rap',
-  'AI Cinematic',
-  'Sci-Fi Trap',
-  'Electronic Future',
-  'Virtual Pop',
-  'Darkwave',
+  'Southern Hip-Hop / Southern Rap',
+  'Southern AI Trap / 601 Sound',
+  'Cyber Cinematic / AI Film',
+  'Phonk & Dark Trap',
+  'Esoteric / Spiritual Lofi',
+  'Hyperpop & Glitchcore',
+  'Synthwave',
+  'AI Movies',
+  'Short Films',
+  'AI TV Shows',
+  'Episodic Series',
+  'Animated Episodes',
 ] as const;
 
 export type ApexGenre = typeof PROJECT_APEX_GENRES[number];
@@ -15,7 +22,7 @@ export type ApexGenre = typeof PROJECT_APEX_GENRES[number];
 export function normalizeGenre(genre?: string): string {
   if (!genre) return 'Cyber Rap';
   const match = PROJECT_APEX_GENRES.find(
-    g => g.toLowerCase() === genre.trim().toLowerCase()
+    (g) => g.toLowerCase() === genre.trim().toLowerCase()
   );
   return match || genre.trim();
 }

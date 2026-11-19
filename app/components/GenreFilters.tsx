@@ -2,14 +2,19 @@
 
 const GENRES = [
   'All Genres',
-  'AI Movies',
   'Cyber Rap',
+  'Southern Hip-Hop / Southern Rap',
+  'Southern AI Trap / 601 Sound',
+  'Cyber Cinematic / AI Film',
+  'Phonk & Dark Trap',
+  'Esoteric / Spiritual Lofi',
+  'Hyperpop & Glitchcore',
   'Synthwave',
-  'AI Phonk',
-  'Neural Trap',
+  'AI Movies',
   'Short Films',
-  'Rap Battle',
-  'Music Video',
+  'AI TV Shows',
+  'Episodic Series',
+  'Animated Episodes',
 ];
 
 interface GenreFiltersProps {

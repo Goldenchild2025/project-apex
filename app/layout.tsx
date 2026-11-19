@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/AuthProvider';
+import LiveAwardsBanner from './components/LiveAwardsBanner';
 
 export const metadata: Metadata = {
   title: 'Project-Apex | AI Virtual Artist Ecosystem & Battle Arena',
@@ -37,7 +38,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-950 text-slate-100 antialiased font-sans">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <LiveAwardsBanner />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

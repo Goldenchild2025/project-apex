@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Film, Trophy, Crown, Sparkles, LayoutDashboard, Upload, Flame, Clock, Users, Shield, CheckCircle2, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { Trophy, Crown, Sparkles, Flame, Clock, Users, ChevronRight, ChevronLeft } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AuthModal from '../AuthModal';
 import SubmitFilmModal from '../components/SubmitFilmModal';
@@ -52,7 +52,7 @@ function BattlesContent() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [selectedFilm, setSelectedFilm] = useState<any | null>(null);
-  
+
   // Arena Drops & Scrolling State
   const [drops, setDrops] = useState<FilmDrop[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -94,7 +94,7 @@ function BattlesContent() {
       if (!active) return;
       if (!error && filmsData) {
         if (targetFilmId) {
-          const targetIndex = filmsData.findIndex(f => String(f.id) === String(targetFilmId));
+          const targetIndex = filmsData.findIndex((f) => String(f.id) === String(targetFilmId));
           if (targetIndex > 0) {
             const [targetFilm] = filmsData.splice(targetIndex, 1);
             filmsData.unshift(targetFilm);
@@ -132,17 +132,22 @@ function BattlesContent() {
 
   // Fetch user's existing votes from Supabase on mount/auth change
   useEffect(() => {
-    if (!supabaseConfigured || !user) return;
+    if (!supabaseConfigured || !user) {
+      setVotedMatchups({});
+      return;
+    }
 
+    let active = true;
     const fetchUserVotes = async () => {
       const { data: votes, error } = await supabase
         .from('film_votes')
         .select('film_id')
         .eq('user_id', user.id);
 
+      if (!active) return;
       if (!error && votes) {
         const votedMap: Record<string, boolean> = {};
-        votes.forEach(v => {
+        votes.forEach((v) => {
           votedMap[String(v.film_id)] = true;
         });
         setVotedMatchups(votedMap);
@@ -150,14 +155,19 @@ function BattlesContent() {
     };
 
     void fetchUserVotes();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   // Safe Pairing Logic: Prevent drop from fighting itself
   const champion = drops[currentIndex] || drops[0];
   const candidateChallenger = drops[currentIndex + 1] || drops[0];
-  const challenger = (drops.length > 1 && candidateChallenger?.id !== champion?.id) 
-    ? candidateChallenger 
-    : null;
+  const challenger =
+    drops.length > 1 && candidateChallenger?.id !== champion?.id
+      ? candidateChallenger
+      : null;
 
   const handleNextMatchup = () => {
     if (drops.length <= 2) return;
@@ -202,7 +212,7 @@ function BattlesContent() {
           artist_moniker: artistMoniker,
           film_title: trackTitle.trim(),
           genre: selectedGenre,
-          tier: 'Featured / Pro'
+          tier: 'Featured / Pro',
         })
         .select()
         .single();
@@ -210,7 +220,7 @@ function BattlesContent() {
       if (error) throw error;
 
       if (data) {
-        setWaitlist([...waitlist, data]);
+        setWaitlist((prev) => [...prev, data]);
         setSuccessMsg('🎉 Successfully locked into the Battle Arena queue!');
         setTrackTitle('');
       }
@@ -233,7 +243,6 @@ function BattlesContent() {
     }
 
     try {
-      // 1. Record vote in database table securely
       const { error: voteError } = await supabase
         .from('film_votes')
         .insert({ user_id: user.id, film_id: targetId });
@@ -247,10 +256,9 @@ function BattlesContent() {
         throw voteError;
       }
 
-      // 2. Increment upvotes on films table and local state
       const newVotes = (currentVotes || 0) + 1;
       setVotedMatchups((prev) => ({ ...prev, [String(targetId)]: true }));
-      setTotalBattles(prev => prev + 1);
+      setTotalBattles((prev) => prev + 1);
 
       setDrops((prev) =>
         prev.map((d) => (String(d.id) === String(targetId) ? { ...d, upvotes: newVotes } : d))
@@ -268,9 +276,10 @@ function BattlesContent() {
     }
   };
 
-  const filteredWaitlist = matchupGenre === 'all' 
-    ? waitlist 
-    : waitlist.filter(item => item.genre.toLowerCase() === matchupGenre.toLowerCase());
+  const filteredWaitlist =
+    matchupGenre === 'all'
+      ? waitlist
+      : waitlist.filter((item) => item.genre.toLowerCase() === matchupGenre.toLowerCase());
 
   const hasDrops = drops.length > 0;
 
@@ -282,7 +291,6 @@ function BattlesContent() {
       <Navbar onOpenSubmit={() => setIsSubmitOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-        
         {/* Header & Matchup Scroller Controls */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-800 pb-6">
           <div className="space-y-2">
@@ -341,7 +349,7 @@ function BattlesContent() {
             <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" /> Championship Matchup • Accepting All Challengers
             </h2>
-            
+
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <span className="text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Filter Matchup:</span>
               <select
@@ -377,7 +385,6 @@ function BattlesContent() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-15">
-              
               {/* Contender 1: REIGNING CHAMPION */}
               <div className="bg-slate-950 border border-amber-500/40 rounded-2xl p-6 flex flex-col justify-between transition-all space-y-4 shadow-xl">
                 <div className="w-full h-48 rounded-xl bg-gradient-to-br from-amber-500/30 via-orange-600/20 to-slate-900 border border-amber-500/40 flex items-center justify-center relative group overflow-hidden">
@@ -388,8 +395,8 @@ function BattlesContent() {
                     <img src={champion.artwork_url} alt={champion.title} className="w-full h-full object-cover" />
                   ) : null}
                   {champion?.video_url && (
-                    <button 
-                      onClick={() => setSelectedFilm(champion)} 
+                    <button
+                      onClick={() => setSelectedFilm(champion)}
                       className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform cursor-pointer z-20"
                       title="Preview & Play Stream"
                     >
@@ -416,7 +423,7 @@ function BattlesContent() {
                       : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
                   }`}
                 >
-                  {championVoted ? '✓ Vote Recorded' : 'Vote For Champion'}
+                  {championVoted ? '✓ Vote Recorded' : user ? 'Vote For Champion' : 'Sign In to Vote Champion'}
                 </button>
               </div>
 
@@ -431,8 +438,8 @@ function BattlesContent() {
                       <img src={challenger.artwork_url} alt={challenger.title} className="w-full h-full object-cover" />
                     ) : null}
                     {challenger?.video_url && (
-                      <button 
-                        onClick={() => setSelectedFilm(challenger)} 
+                      <button
+                        onClick={() => setSelectedFilm(challenger)}
                         className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition-transform cursor-pointer z-20"
                         title="Preview & Play Stream"
                       >
@@ -457,7 +464,7 @@ function BattlesContent() {
                         : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/20'
                     }`}
                   >
-                    {challengerVoted ? '✓ Vote Recorded' : 'Vote This Challenger'}
+                    {challengerVoted ? '✓ Vote Recorded' : user ? 'Vote This Challenger' : 'Sign In to Vote Challenger'}
                   </button>
                 </div>
               ) : (
@@ -477,21 +484,23 @@ function BattlesContent() {
                   </button>
                 </div>
               )}
-
             </div>
           )}
         </div>
 
         {/* BATTLE ARENA WAITLIST & QUEUE SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Join Form */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl h-fit">
             <div className="space-y-1">
               <h2 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-400" /> Enter Battle Queue
               </h2>
-              <p className="text-xs text-slate-400">Enter the waitlist to step into the ring against the champion.</p>
+              <p className="text-xs text-slate-400">
+                {user
+                  ? 'Enter the waitlist to step into the ring against the champion.'
+                  : 'Browse the queue freely—sign in when ready to lock your track into the challenger queue.'}
+              </p>
             </div>
 
             {successMsg && <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 font-bold">{successMsg}</div>}
@@ -573,9 +582,7 @@ function BattlesContent() {
               </div>
             )}
           </div>
-
         </div>
-
       </main>
 
       {/* Global Media Preview Modal */}
